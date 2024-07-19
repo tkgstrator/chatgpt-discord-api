@@ -1,0 +1,73 @@
+{
+	"$schema": "https://biomejs.dev/schemas/1.7.3/schema.json",
+	"organizeImports": {
+		"enabled": true
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noDoubleEquals": "error",
+				"noAssignInExpressions": "error",
+				"noExplicitAny": "off",
+				"noPrototypeBuiltins": "error",
+				"noGlobalIsNan": "error",
+				"noImplicitAnyLet": "error"
+			},
+			"correctness": {
+				"noSwitchDeclarations": "off",
+				"noVoidTypeReturn": "error"
+			},
+			"complexity": {
+				"noThisInStatic": "error",
+				"useLiteralKeys": "error",
+				"noForEach": "error",
+				"noBannedTypes": "error",
+				"noStaticOnlyClass": "error",
+				"noExtraBooleanCast": "error",
+				"useOptionalChain": "error"
+			},
+			"style": {
+				"useDefaultParameterLast": "error",
+				"noUselessElse": "error",
+				"noParameterAssign": "error",
+				"noUnusedTemplateLiteral": "error",
+				"useTemplate": "error",
+				"useSingleVarDeclarator": "error",
+				"useExponentiationOperator": "error"
+			}
+		}
+	},
+	"formatter": {
+		"enabled": true,
+		"formatWithErrors": false,
+		"ignore": [],
+		"attributePosition": "auto",
+		"indentStyle": "space",
+		"indentWidth": 2,
+		"lineEnding": "lf",
+		"lineWidth": 120
+	},
+	"javascript": {
+		"formatter": {
+			"enabled": true,
+			"arrowParentheses": "always",
+			"bracketSameLine": false,
+			"bracketSpacing": true,
+			"jsxQuoteStyle": "single",
+			"quoteStyle": "single",
+			"quoteProperties": "asNeeded",
+			"semicolons": "asNeeded",
+			"indentStyle": "space",
+			"indentWidth": 2,
+			"lineWidth": 140,
+			"trailingCommas": "none"
+		}
+	},
+	"json": {
+		"formatter": {
+			"trailingCommas": "none"
+		}
+	}
+}

@@ -1,0 +1,16 @@
+services:
+  discord_workers_kv:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUN_VERSION: 1.1.19
+        NODE_VERSION: 20.13.1
+    volumes:
+      - node_modules_cached:/home/bun/app/node_modules
+      - ../:/home/bun/app:cached
+    tty: true
+    stdin_open: true
+
+volumes:
+  node_modules_cached:
