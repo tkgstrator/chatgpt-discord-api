@@ -22,10 +22,14 @@ users.post('/', async (c: Context<{ Bindings: Bindings }>) => {
   if (body === null) {
     throw new HTTPException(400, { message: 'Bad request.' })
   }
-  // @ts-ignore
-  const user: UserSchemaCreate = await decode(UserSchema.Create, body)
-  c.executionCtx.waitUntil(c.env.ChatGPT_UserData.put(user.discord_user_id, JSON.stringify(user)))
-  return c.json(user)
+  try {
+    // @ts-ignore
+    const user: UserSchemaCreate = await decode(UserSchema.Create, body)
+    c.executionCtx.waitUntil(c.env.ChatGPT_UserData.put(user.discord_user_id, JSON.stringify(user)))
+    return c.json(user)
+  } catch {
+    throw new HTTPException(400, { message: 'Bad request.' })
+  }
 })
 
 /**
