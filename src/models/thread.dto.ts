@@ -4,7 +4,7 @@ import { Schema as S } from '@effect/schema'
 import type OpenAI from 'openai'
 
 export namespace ThreadSchema {
-  class MessageParam extends S.Class<MessageParam>('MessageParam')({
+  export class MessageParam extends S.Class<MessageParam>('MessageParam')({
     system: S.Array(
       S.Struct({
         role: S.Enums(Role),
@@ -41,13 +41,13 @@ export namespace ThreadSchema {
   }
 
   export class Data extends S.Class<Data>('Data')({
-    discord_user_id: S.UndefinedOr(S.String),
+    discord_user_id: S.String,
     model: S.Enums(Model),
     thread_id: S.String,
     private_thread: S.Boolean,
     joinable: S.Boolean,
-    prompts: S.UndefinedOr(MessageParam),
-    estimated_token_used: S.UndefinedOr(S.Int)
+    prompts: MessageParam,
+    estimated_token_used: S.Int
   }) {
     /**
      * データを上書きする
@@ -56,6 +56,20 @@ export namespace ThreadSchema {
      */
     update(params: Partial<ThreadSchema.Data>): ThreadSchema.Data {
       return new ThreadSchema.Data({ ...this, ...params })
+    }
+
+    /**
+     * プロンプトを追加する
+     * @param params
+     * @returns
+     */
+    add(params: ThreadSchema.MessageParam): ThreadSchema.Data {
+      return this.update({
+        prompts: new ThreadSchema.MessageParam({
+          system: this.prompts.system.concat(params.system),
+          conversation: this.prompts.conversation.concat(params.conversation)
+        })
+      })
     }
 
     /**

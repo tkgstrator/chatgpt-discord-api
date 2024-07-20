@@ -64,8 +64,14 @@ const find = async (c: Context<{ Bindings: Bindings }>, discord_user_id: string)
 const create = async (c: Context<{ Bindings: Bindings }>): Promise<UserSchema.Data> => {
   // @ts-ignore
   const user: UserSchema.Data = UserSchema.Data.New(await c.req.json())
-  c.executionCtx.waitUntil(c.env.ChatGPT_UserData.put(user.discord_user_id, JSON.stringify(user)))
-  return user
+  const data: any | null = await c.env.ChatGPT_UserData.get(user.discord_user_id, { type: 'json' })
+  // 存在しなかった場合は新規作成
+  if (data === null) {
+    c.executionCtx.waitUntil(c.env.ChatGPT_UserData.put(user.discord_user_id, JSON.stringify(user)))
+    return user
+  }
+  // いた場合にはその値を返す
+  return data
 }
 
 /**
