@@ -1,7 +1,8 @@
 name = "chatgpt_discord_workers"
 main = "src/index.ts"
-compatibility_date = "2024-05-13"
+compatibility_date = "2023-10-30"
 logpush = true
+send_metrics = true
 
 kv_namespaces = [
   { binding = "ChatGPT_UserData", id = "991994ce606c423288744c9b6bab98b6", preview_id = "b01b3ea10c37418f94e1cc9dc714bb2d" },

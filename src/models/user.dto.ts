@@ -1,43 +1,90 @@
+import { decode } from '@/utils/decode'
 import { Schema as S } from '@effect/schema'
 
 export namespace UserSchema {
-  export const Create = S.Struct({
+  export class Subscription extends S.Class<Subscription>('Subscription')({
+    plan_id: S.NullOr(S.String),
+    remaining_token: S.Struct({
+      prompt: S.Int.pipe(S.greaterThan(0)),
+      completion: S.Int.pipe(S.greaterThan(0))
+    }),
+    expired_in: S.NullOr(S.Date)
+  }) {}
+
+  // export class Plan extends S.Class<Plan>('Plan')({
+  //   plan_id: S.NullOr(S.String),
+  //   expired_in: S.NullOr(S.Date)
+  // }) {}
+
+  export class Usage extends S.Class<Usage>('Usage')({
+    prompt: S.Int.pipe(S.greaterThan(0)),
+    completion: S.Int.pipe(S.greaterThan(0))
+  }) {}
+
+  export class Data extends S.Class<Data>('Data')({
     discord_user_id: S.String,
-    subscription: S.Struct({
-      plan_id: S.NullOr(S.String),
-      remaining_token: S.Struct({
-        prompt: S.Int,
-        completion: S.Int
-      }),
-      expired_in: S.NullOr(S.Date)
-    })
-  })
+    subscription: Subscription
+  }) {
+    /**
+     * データを上書きする
+     * @param params
+     * @returns
+     */
+    update(params: Partial<UserSchema.Data>): UserSchema.Data {
+      // @ts-ignore
+      return new UserSchema.Data(decode(UserSchema.Data, { ...this, ...params }))
+    }
 
-  export const Patch = S.Struct({
-    subscription: S.Struct({
-      plan_id: S.NullishOr(S.String),
-      remaining_token: S.Struct({
-        prompt: S.Int,
-        completion: S.Int
-      }),
-      expired_in: S.NullishOr(S.Date)
-    })
-  })
+    /**
+     * トークンを消費する
+     * @param params
+     * @returns
+     */
+    use(usage: UserSchema.Usage): UserSchema.Data {
+      return this.update({
+        subscription: {
+          ...this.subscription,
+          remaining_token: {
+            prompt: this.subscription.remaining_token.prompt - usage.prompt,
+            completion: this.subscription.remaining_token.completion - usage.completion
+          }
+        }
+      })
+    }
 
-  export const New = (discord_user_id: string): UserSchemaCreate => {
-    return {
-      discord_user_id: discord_user_id,
-      subscription: {
-        plan_id: null,
-        remaining_token: {
-          prompt: 1000000,
-          completion: 1000000
-        },
-        expired_in: null
-      }
+    /**
+     * サブスクリプションを購読する
+     * @param subscription
+     * @returns
+     */
+    subscribe(subscription: { plan_id: string; expired_in: Date }): UserSchema.Data {
+      return this.update({ ...this, ...subscription })
+    }
+
+    /**
+     * コンストラクタ
+     * @param discord_user_id
+     * @returns
+     */
+    static New(body: any): UserSchema.Data {
+      return new UserSchema.Data({
+        discord_user_id: decode(
+          S.Struct({
+            discord_user_id: S.String
+          }),
+          body
+        ).discord_user_id,
+        subscription: new UserSchema.Subscription({
+          plan_id: null,
+          remaining_token: {
+            prompt: 1000000,
+            completion: 1000000
+          },
+          expired_in: null
+        })
+      })
     }
   }
 }
 
-export type UserSchemaCreate = typeof UserSchema.Create.Type
-export type UserSchemaUpdate = typeof UserSchema.Update.Type
+export type UserSchemaType = typeof UserSchema.Data.Type

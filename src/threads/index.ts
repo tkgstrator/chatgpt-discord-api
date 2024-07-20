@@ -1,4 +1,4 @@
-import { ThreadSchema, type ThreadSchemaCreate } from '@/models/thread.dto'
+import { ThreadSchema } from '@/models/thread.dto'
 import type { Bindings } from '@/utils/bindings'
 import { decode } from '@/utils/decode'
 import { type Context, Hono } from 'hono'
@@ -8,54 +8,44 @@ export const threads = new Hono<{ Bindings: Bindings }>()
 
 threads.get('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
   const thread_id: string = c.req.param('thread_id')
-  return c.json(await find_thread(c, thread_id))
+  return c.json(await get(c, thread_id))
 })
 
 threads.post('', async (c: Context<{ Bindings: Bindings }>) => {
-  const body: any | null = await c.req.json()
-  if (body === null) {
-    throw new HTTPException(400, { message: 'Bad request.' })
-  }
-  try {
-    // @ts-ignore
-    const thread: ThreadSchemaCreate = await decode(ThreadSchema.Create, body)
-    c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.put(thread.thread_id, JSON.stringify(thread)))
-    return c.json(thread)
-  } catch {
-    throw new HTTPException(400, { message: 'Bad request.' })
-  }
+  return c.json(await create(c))
 })
 
-threads.patch('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
-  const thread_id: string = c.req.param('thread_id')
-  return c.json(await patch_thread(c, thread_id))
-})
+// threads.patch('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
+//   const thread_id: string = c.req.param('thread_id')
+// })
 
 threads.delete('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
   const thread_id: string = c.req.param('thread_id')
   c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.delete(thread_id))
-  return c.json({ message: 'Thread deleted.' })
+  return new Response(null, { status: 204 })
 })
 
-const patch_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchemaCreate> => {
-  const user: ThreadSchemaCreate = await find_thread(c, thread_id)
-  const body: any | null = await c.req.json()
+/**
+ * スレッドの取得
+ * @param c
+ * @returns
+ */
+const get = async (c: Context<{ Bindings: Bindings }>, thread_id: string) => {
+  const data: any | null = await c.env.ChatGPT_ChatData.get(thread_id, { type: 'json' })
+  if (data === null) {
+    throw new HTTPException(404)
+  }
   // @ts-ignore
-  const patch: ThreadSchemaCreate = { ...user, ...body }
-  c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.put(thread_id, JSON.stringify(patch)))
-  return patch
+  return decode(ThreadSchema.Data, data)
 }
 
 /**
- * スレッド情報の取得
+ * スレッドの作成
  * @param c
- * @param discord_user_id
  * @returns
  */
-const find_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchemaCreate> => {
-  const data: any | null = await c.env.ChatGPT_ChatData.get(thread_id, { type: 'json' })
-  if (data === null) {
-    throw new HTTPException(404, { message: 'Thread not found.' })
-  }
-  return await decode(ThreadSchema.Create, data)
+const create = async (c: Context<{ Bindings: Bindings }>): Promise<ThreadSchema.Data> => {
+  const thread: ThreadSchema.Data = ThreadSchema.Data.New(await c.req.json())
+  c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.put(thread.thread_id, JSON.stringify(thread)))
+  return thread
 }

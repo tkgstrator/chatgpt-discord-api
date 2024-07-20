@@ -14,13 +14,13 @@ const app = new Hono<{ Bindings: Bindings }>()
 app.use(logger())
 app.use(csrf())
 app.use('*', cors())
-app.onError((error, c) => {
-  console.error(error)
-  if (error instanceof HTTPException) {
-    return c.json({ message: error.message }, error.status)
-  }
-  return c.json({ message: 'Internal Server Error' }, 500)
-})
+// app.onError((error, c) => {
+//   console.error(error)
+//   if (error instanceof HTTPException) {
+//     return c.json({ message: error.message }, error.status)
+//   }
+//   return c.json({ message: 'Internal Server Error' }, 500)
+// })
 // app.get(
 //   '*',
 //   cache({
