@@ -1,7 +1,7 @@
 {
-  "name": "Discord KV API",
+  "name": "ChatGPT Discord API",
   "dockerComposeFile": ["docker-compose.yaml"],
-  "service": "discord_workers_kv",
+  "service": "chatgpt_discord_api",
   "workspaceFolder": "/home/bun/app",
   "shutdownAction": "stopCompose",
   "remoteUser": "bun",
