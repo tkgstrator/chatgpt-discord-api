@@ -27,7 +27,7 @@
     "commitlint": "^19.3.0",
     "@types/bun": "latest",
     "husky": "^9.1.1",
-    "wrangler": "3.62.0"
+    "wrangler": "3.18.0"
   },
   "peerDependencies": {
     "typescript": "^5.5.3"
@@ -35,7 +35,7 @@
   "dependencies": {
     "@effect/schema": "0.67.20",
     "dayjs": "^1.11.12",
-    "hono": "^4.3.7",
+    "hono": "^4.5.0",
     "openai": "^4.52.7",
     "stripe": "^16.2.0"
   }
