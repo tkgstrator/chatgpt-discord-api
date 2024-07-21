@@ -16,7 +16,7 @@ export const webhook = new Hono<{ Bindings: Bindings }>()
  * ユーザー情報の取得
  */
 webhook.post('/subscribe', async (c: Context<{ Bindings: Bindings }>) => {
-  await verify(c)
+  c.executionCtx.waitUntil(verify(c))
   return c.json({})
 })
 
@@ -79,7 +79,7 @@ const checkout_complete = async (c: Context<{ Bindings: Bindings }>, event: Stri
     expired_in: payment.current_period.end,
     token_limit: payment.token_limit
   })
-  console.log(JSON.stringify(user, null, 2))
+  await c.env.ChatGPT_UserData.put(user.discord_user_id, JSON.stringify(user))
 }
 
 const payment_success = async (c: Context<{ Bindings: Bindings }>, event: Stripe.InvoicePaymentSucceededEvent) => {
