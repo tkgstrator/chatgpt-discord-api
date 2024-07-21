@@ -42,18 +42,33 @@ export namespace UserSchema {
     subscription: Subscription
   }) {
     /**
-     * データを上書きする
+     * サブスクリプションデータの更新
      * @param params
      * @returns
      */
-    update(subscription: Partial<UserSchema.Subscription>): UserSchema.Data {
+    update(
+      subscription: Partial<{
+        plan_id: string | null
+        token: {
+          prompt: {
+            limit: number
+            usage: number
+          }
+          completion: {
+            limit: number
+            usage: number
+          }
+        }
+        expired_in: string | null
+      }>
+    ): UserSchema.Data {
       return new UserSchema.Data(
         // @ts-ignore
         decode(UserSchema.Data, {
           ...this,
           subscription: {
             ...this.subscription,
-            ...subscription
+            ...JSON.parse(JSON.stringify(subscription))
           }
         })
       )
@@ -84,8 +99,21 @@ export namespace UserSchema {
      * @param subscription
      * @returns
      */
-    subscribe(params: Partial<UserSchema.Subscription>): UserSchema.Data {
-      return this.update(params)
+    subscribe(params: { plan_id: string; expired_in: string; token_limit: number }): UserSchema.Data {
+      return this.update({
+        plan_id: params.plan_id,
+        token: {
+          prompt: {
+            limit: params.token_limit,
+            usage: this.subscription.token.prompt.usage
+          },
+          completion: {
+            limit: params.token_limit,
+            usage: this.subscription.token.completion.usage
+          }
+        },
+        expired_in: params.expired_in
+      })
     }
 
     /**

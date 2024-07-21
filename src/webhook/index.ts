@@ -1,6 +1,6 @@
 import { EventType } from '@/enums/event'
 import { PaymentSchema } from '@/models/payment.dto'
-import { UserSchema } from '@/models/user.dto'
+import type { UserSchema } from '@/models/user.dto'
 import { find, users } from '@/users'
 import type { Bindings } from '@/utils/bindings'
 import { decode } from '@/utils/decode'
@@ -31,7 +31,6 @@ const verify = async (c: Context<{ Bindings: Bindings }>) => {
   }
   const payload: string = await c.req.text()
   const event: Stripe.Event = await stripe.webhooks.constructEventAsync(payload, signature, c.env.STRIPE_WEBHOOK_SECRET)
-  console.log(event.type)
   switch (event.type) {
     // 初回のサブスクリプション作成・チェックアウトで呼ばれる
     case EventType.CHECKOUT_SESSION_COMPLETED:
@@ -66,48 +65,41 @@ const checkout_complete = async (c: Context<{ Bindings: Bindings }>, event: Stri
   if (data === null) {
     throw new HTTPException(404)
   }
-  console.log(data)
-  try {
-    // @ts-ignore
-    const payment: PaymentSchema.Data = decode(PaymentSchema.Data, data).update(event)
-    console.log('[UPDATE]', payment)
-    await c.env.ChatGPT_PaymentData.put(payment.subscription_id, JSON.stringify(payment))
-  } catch (error) {
-    console.error(error)
+  // @ts-ignore
+  const payment: PaymentSchema.Data = decode(PaymentSchema.Data, data).update(event)
+  console.log('[UPDATE]', payment)
+  // Discordとの連携
+  await c.env.ChatGPT_PaymentData.put(payment.subscription_id, JSON.stringify(payment))
+  if (payment.discord_user_id === null) {
+    throw new HTTPException(400)
   }
-  // const discord_user_id: string | null = event.data.object.client_reference_id
-  // const metadata: Stripe.Metadata | null = event.data.object.metadata
-  // const subscription: string | Stripe.Subscription | null = event.data.object.subscription
-  // if (discord_user_id === null || metadata === null || subscription === null) {
-  //   throw new HTTPException(400)
-  // }
-  // const token_limit: number = Number.parseInt(metadata.token_limit, 10)
-  // const user: UserSchema.Data = await find(c, discord_user_id)
-  // const expired_in = (await stripe.subscriptions.retrieve(subscription.toString())).current_period_end
-  // const update = user.subscribe(
-  //   new UserSchema.Subscription({
-  //     plan_id: subscription.toString(),
-  //     token: new UserSchema.Token({
-  //       prompt: {
-  //         limit: token_limit,
-  //         usage: user.subscription.token.prompt.usage
-  //       },
-  //       completion: {
-  //         limit: token_limit,
-  //         usage: user.subscription.token.completion.usage
-  //       }
-  //     }),
-  //     expired_in: dayjs(expired_in * 1000).toISOString()
-  //   })
-  // )
-  // console.log(JSON.stringify(update, null, 2))
+  // ユーザーデータを取得
+  const user: UserSchema.Data = (await find(c, payment.discord_user_id)).subscribe({
+    plan_id: payment.subscription_id,
+    expired_in: payment.current_period.end,
+    token_limit: payment.token_limit
+  })
+  console.log(JSON.stringify(user, null, 2))
 }
 
-const payment_success = async (c: Context<{ Bindings: Bindings }>, event: Stripe.InvoicePaymentSucceededEvent) => {}
+const payment_success = async (c: Context<{ Bindings: Bindings }>, event: Stripe.InvoicePaymentSucceededEvent) => {
+  // const subscription: string | Stripe.Subscription | null = event.data.object.subscription
+  // if (subscription === null) {
+  //   throw new HTTPException(404)
+  // }
+  // const data: unknown | null = await c.env.ChatGPT_PaymentData.get(subscription.toString(), { type: 'json' })
+  // if (data === null) {
+  //   throw new HTTPException(404)
+  // }
+  // // @ts-ignore
+  // const payment: PaymentSchema.Data = decode(PaymentSchema.Data, data).update(event)
+  // console.log('[UPDATE]', payment, event.type)
+  // await c.env.ChatGPT_PaymentData.put(payment.subscription_id, JSON.stringify(payment))
+}
 
 const subscription_create = async (c: Context<{ Bindings: Bindings }>, event: Stripe.CustomerSubscriptionCreatedEvent) => {
   const payment: PaymentSchema.Data = PaymentSchema.Data.New(event)
-  console.log('[CREATE]', payment)
+  console.log('[CREATE]', payment, event.type)
   await c.env.ChatGPT_PaymentData.put(payment.subscription_id, JSON.stringify(payment))
 }
 
@@ -118,7 +110,7 @@ const subscription_update = async (c: Context<{ Bindings: Bindings }>, event: St
   }
   // @ts-ignore
   const payment: PaymentSchema.Data = decode(PaymentSchema.Data, data).update(event)
-  console.log('[UPDATE]', payment)
+  console.log('[UPDATE]', payment, event.type)
   await c.env.ChatGPT_PaymentData.put(payment.subscription_id, JSON.stringify(payment))
 }
 
@@ -129,5 +121,5 @@ const subscription_delete = async (c: Context<{ Bindings: Bindings }>, event: St
   }
   // @ts-ignore
   const payment: PaymentSchema.Data = decode(PaymentSchema.Data, data).update(event)
-  console.log('[DELETE]', payment)
+  console.log('[DELETE]', payment, event.type)
 }

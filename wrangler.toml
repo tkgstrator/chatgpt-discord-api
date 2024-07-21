@@ -1,4 +1,4 @@
-name = "chatgpt_discord_workers"
+name = "chatgpt_discord_api"
 main = "src/index.ts"
 compatibility_date = "2023-10-30"
 logpush = true
@@ -6,6 +6,6 @@ send_metrics = true
 
 kv_namespaces = [
   { binding = "ChatGPT_UserData", id = "991994ce606c423288744c9b6bab98b6", preview_id = "b01b3ea10c37418f94e1cc9dc714bb2d" },
-  { binding = "ChatGPT_ChatData", id = "bfc2dbb4485b44708d9a7895f59a0c09", preview_id = "b01b3ea10c37418f94e1cc9dc714bb2d" },
+  { binding = "ChatGPT_ChatData", id = "bfc2dbb4485b44708d9a7895f59a0c09", preview_id = "cf51347afe17486ba948eb1c56ac0a68" },
   { binding = "ChatGPT_PaymentData", id = "22d2c35f8ba446998fc81355be12bf93", preview_id = "5d28cb6d13994c82aad4cc5d3e93758b" },
 ]
