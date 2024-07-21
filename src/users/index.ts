@@ -1,7 +1,6 @@
 import { UserSchema } from '@/models/user.dto'
 import type { Bindings } from '@/utils/bindings'
 import { decode } from '@/utils/decode'
-import { Schema as S } from '@effect/schema'
 import { type Context, Hono } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
@@ -13,6 +12,15 @@ export const users = new Hono<{ Bindings: Bindings }>()
 users.get('/:discord_user_id', async (c: Context<{ Bindings: Bindings }>) => {
   const discord_user_id: string = c.req.param('discord_user_id')
   return c.json(await find(c, discord_user_id))
+})
+
+/**
+ * ユーザー情報の取得
+ */
+users.get('/', async (c: Context<{ Bindings: Bindings }>) => {
+  const keys: string[] = (await c.env.ChatGPT_UserData.list()).keys.map((key) => key.name)
+  const users: UserSchema.Data[] = await Promise.all(keys.map((key) => find(c, key)))
+  return c.json(users)
 })
 
 /**
@@ -41,12 +49,20 @@ users.delete('/:discord_user_id', async (c: Context<{ Bindings: Bindings }>) => 
 })
 
 /**
+ * ユーザー情報の削除
+ */
+users.delete('/', async (c: Context<{ Bindings: Bindings }>) => {
+  const keys: string[] = (await c.env.ChatGPT_UserData.list()).keys.map((key) => key.name)
+  c.executionCtx.waitUntil(Promise.all(keys.map((key) => c.env.ChatGPT_UserData.delete(key))))
+  return new Response(null, { status: 204 })
+})
+/**
  * ユーザー情報の取得
  * @param c
  * @param discord_user_id
  * @returns
  */
-const find = async (c: Context<{ Bindings: Bindings }>, discord_user_id: string): Promise<UserSchema.Data> => {
+export const find = async (c: Context<{ Bindings: Bindings }>, discord_user_id: string): Promise<UserSchema.Data> => {
   const data: any | null = await c.env.ChatGPT_UserData.get(discord_user_id, { type: 'json' })
   if (data === null) {
     throw new HTTPException(404)

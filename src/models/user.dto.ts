@@ -17,7 +17,7 @@ export namespace UserSchema {
   export class Subscription extends S.Class<Subscription>('Subscription')({
     plan_id: S.NullOr(S.String),
     token: Token,
-    expired_in: S.NullOr(S.Date)
+    expired_in: S.NullOr(S.String)
   }) {
     /**
      * 利用可能かどうか
@@ -46,9 +46,17 @@ export namespace UserSchema {
      * @param params
      * @returns
      */
-    update(params: Partial<UserSchema.Data>): UserSchema.Data {
-      // @ts-ignore
-      return new UserSchema.Data(decode(UserSchema.Data, { ...this, ...params }))
+    update(subscription: Partial<UserSchema.Subscription>): UserSchema.Data {
+      return new UserSchema.Data(
+        // @ts-ignore
+        decode(UserSchema.Data, {
+          ...this,
+          subscription: {
+            ...this.subscription,
+            ...subscription
+          }
+        })
+      )
     }
 
     /**
@@ -58,20 +66,16 @@ export namespace UserSchema {
      */
     use(usage: UserSchema.Usage): UserSchema.Data {
       return this.update({
-        subscription: new Subscription({
-          plan_id: this.subscription.plan_id,
-          token: new Token({
-            prompt: {
-              limit: this.subscription.token.prompt.limit,
-              usage: this.subscription.token.prompt.usage + usage.prompt
-            },
-            completion: {
-              limit: this.subscription.token.completion.limit,
-              usage: this.subscription.token.completion.usage + usage.completion
-            }
-          }),
-          expired_in: this.subscription.expired_in
-        })
+        token: {
+          prompt: {
+            limit: this.subscription.token.prompt.limit,
+            usage: this.subscription.token.prompt.usage + usage.prompt
+          },
+          completion: {
+            limit: this.subscription.token.completion.limit,
+            usage: this.subscription.token.completion.usage + usage.completion
+          }
+        }
       })
     }
 
@@ -80,8 +84,8 @@ export namespace UserSchema {
      * @param subscription
      * @returns
      */
-    subscribe(subscription: { plan_id: string; expired_in: Date }): UserSchema.Data {
-      return this.update({ ...this, ...subscription })
+    subscribe(params: Partial<UserSchema.Subscription>): UserSchema.Data {
+      return this.update(params)
     }
 
     /**

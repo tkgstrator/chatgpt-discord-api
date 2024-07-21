@@ -8,6 +8,7 @@ import { HTTPException } from 'hono/http-exception'
 import { threads } from './threads'
 import { users } from './users'
 import type { Bindings } from './utils/bindings'
+import { webhook } from './webhook'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -31,6 +32,7 @@ app.use('*', cors())
 
 app.route('/users', users)
 app.route('/threads', threads)
+app.route('/webhook', webhook)
 
 export default {
   port: 3000,
