@@ -1,5 +1,5 @@
 {
-  "name": "chatgpt_discord_workers",
+  "name": "chatgpt_discord_api",
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
