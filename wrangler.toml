@@ -1,10 +1,10 @@
-name = "chatgpt_discord_workers"
+name = "chatgpt_discord_api"
 main = "src/index.ts"
-compatibility_date = "2023-10-30"
+compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2024-05-13"
 logpush = true
 send_metrics = true
 
 kv_namespaces = [
-  { binding = "ChatGPT_UserData", id = "991994ce606c423288744c9b6bab98b6", preview_id = "b01b3ea10c37418f94e1cc9dc714bb2d" },
-  { binding = "ChatGPT_ChatData", id = "bfc2dbb4485b44708d9a7895f59a0c09", preview_id = "b01b3ea10c37418f94e1cc9dc714bb2d" },
+  { binding = "ChatGPT_Thread", id = "3953fc8f715543c49107d62cf6e11df1", preview_id = "fe834d85a6164c0eb815a7dfe0fb19fa" },
 ]
