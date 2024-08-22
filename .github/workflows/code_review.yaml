@@ -19,7 +19,7 @@ jobs:
         id: pragent
         uses: Codium-ai/pr-agent@main
         env:
-          CONFIG.MODEL: gpt-4o-mini
+          CONFIG_MODEL: gpt-4o-mini
           GITHUB_ACTION.AUTO_DESCRIBE: true
           GITHUB_ACTION.AUTO_IMPROVE: true
           GITHUB_ACTION.AUTO_REVIEW: true
