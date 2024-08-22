@@ -1,14 +1,21 @@
 {
-  "name": "Discord KV API",
+  "name": "ChatGPT Discord API",
   "dockerComposeFile": ["docker-compose.yaml"],
-  "service": "discord_workers_kv",
+  "service": "chatgpt_discord_api",
   "workspaceFolder": "/home/bun/app",
   "shutdownAction": "stopCompose",
   "remoteUser": "bun",
+  "mounts": ["source=${env:HOME}/home/bun/.ssh,target=/.ssh,type=bind,consistency=cached,readonly"],
   "features": {
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/common-utils:2": {
       "configureZshAsDefaultShell": true
+    },
+    "ghcr.io/devcontainers/features/node:1.5.0": {
+      "version": "20.16.0"
+    },
+    "ghcr.io/dhoeric/features/act:1": {
+      "version": "0.2.65"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
@@ -16,8 +23,8 @@
       "dockerDashComposeVersion": "v2"
     }
   },
-  "postAttachCommand": "/bin/sh .devcontainer/postAttachCommand.sh",
-  "postCreateCommand": "/bin/sh .devcontainer/postCreateCommand.sh",
+  "postAttachCommand": "/bin/zsh .devcontainer/postAttachCommand.sh",
+  "postCreateCommand": "/bin/zsh .devcontainer/postCreateCommand.sh",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -29,7 +36,8 @@
         "biomejs.biome",
         "eamodio.gitlens",
         "ms-vscode.vscode-typescript-next",
-        "tamasfe.even-better-toml"
+        "tamasfe.even-better-toml",
+        "bierner.markdown-mermaid"
       ],
       "settings": {
         "betterTypeScriptErrors.prettify": true,

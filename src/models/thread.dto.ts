@@ -1,95 +1,33 @@
 import { Model } from '@/enums/model'
 import { Role } from '@/enums/role'
-import { Schema as S } from '@effect/schema'
-import type OpenAI from 'openai'
+import { z } from 'zod'
 
-export namespace ThreadSchema {
-  export class MessageParam extends S.Class<MessageParam>('MessageParam')({
-    system: S.Array(
-      S.Struct({
-        role: S.Enums(Role),
-        content: S.String
-      })
-    ),
-    conversation: S.Array(
-      S.Struct({
-        role: S.Enums(Role),
-        content: S.String
-      })
-    )
-  }) {
-    /**
-     * OpenAIのChatCompletionMessageParamに変換
-     */
-    get messages(): OpenAI.ChatCompletionMessageParam[] {
-      return this.system
-        .map((prompt) => {
-          return {
-            role: prompt.role,
-            content: prompt.content
-          }
-        })
-        .concat(
-          this.conversation.map((prompt) => {
-            return {
-              role: prompt.role,
-              content: prompt.content
-            }
-          })
-        )
-    }
-  }
+export const PromptSchema = z.object({
+  content: z.string().min(1).openapi({
+    example: 'おはようございます'
+  }),
+  role: z.nativeEnum(Role).openapi({
+    example: Role.ASSISTANT
+  })
+})
 
-  export class Data extends S.Class<Data>('Data')({
-    discord_user_id: S.String,
-    model: S.Enums(Model),
-    thread_id: S.String,
-    private_thread: S.Boolean,
-    joinable: S.Boolean,
-    prompts: MessageParam,
-    estimated_token_used: S.Int
-  }) {
-    /**
-     * データを上書きする
-     * @param params
-     * @returns
-     */
-    update(params: Partial<ThreadSchema.Data>): ThreadSchema.Data {
-      return new ThreadSchema.Data({ ...this, ...params })
-    }
+export const ThreadSchema = z.object({
+  model: z.nativeEnum(Model).openapi({
+    example: Model.GPT_4O_MINI
+  }),
+  thread_id: z.string().openapi({
+    example: '1276016528223109174'
+  }),
+  is_private: z.boolean().openapi({
+    example: false
+  }),
+  discord_user_id: z.string().openapi({
+    example: '430364540899819520'
+  }),
+  prompts: z.array(PromptSchema).openapi({
+    example: []
+  })
+})
 
-    /**
-     * プロンプトを追加する
-     * @param params
-     * @returns
-     */
-    add(params: ThreadSchema.MessageParam): ThreadSchema.Data {
-      return this.update({
-        prompts: new ThreadSchema.MessageParam({
-          system: this.prompts.system.concat(params.system),
-          conversation: this.prompts.conversation.concat(params.conversation)
-        })
-      })
-    }
-
-    /**
-     * コンストラクタ
-     * @param params
-     * @returns
-     */
-    static New(body: any): ThreadSchema.Data {
-      return new ThreadSchema.Data({
-        discord_user_id: body.discord_user_id,
-        model: Model.GPT_4O_MINI,
-        thread_id: body.thread_id,
-        private_thread: false,
-        joinable: true,
-        prompts: new MessageParam({
-          system: [],
-          conversation: []
-        }),
-        estimated_token_used: 0
-      })
-    }
-  }
-}
+export type PromptSchema = z.infer<typeof PromptSchema>
+export type ThreadSchema = z.infer<typeof ThreadSchema>
