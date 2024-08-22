@@ -3,6 +3,18 @@ on:
   push:
 jobs:
   commitlint:
+    name: Lockfile
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Check lockfile
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
     name: CommitLint
     if: github.event.action != 'closed' || github.event.pull_request.merged != true
     runs-on: ubuntu-24.04
