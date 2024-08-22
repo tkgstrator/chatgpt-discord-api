@@ -1,60 +1,196 @@
-import { ThreadSchema } from '@/models/thread.dto'
+import { HTTPMethod } from '@/enums/method'
+import { PromptSchema, ThreadSchema } from '@/models/thread.dto'
 import type { Bindings } from '@/utils/bindings'
-import { decode } from '@/utils/decode'
-import { type Context, Hono } from 'hono'
+import { OpenAPIHono as Hono, createRoute, z } from '@hono/zod-openapi'
+import type { Context } from 'hono'
 import { HTTPException } from 'hono/http-exception'
 
-export const threads = new Hono<{ Bindings: Bindings }>()
+export const app = new Hono<{ Bindings: Bindings }>()
 
-threads.get('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
-  const thread_id: string = c.req.param('thread_id')
-  return c.json(await get(c, thread_id))
-})
+const create_thread = (c: Context<{ Bindings: Bindings }>, params: ThreadSchema): ThreadSchema => {
+  c.executionCtx.waitUntil(c.env.ChatGPT_Thread.put(params.thread_id, JSON.stringify(params)))
+  return params
+}
 
-threads.post('', async (c: Context<{ Bindings: Bindings }>) => {
-  return c.json(await create(c))
-})
+const update_thread = (c: Context<{ Bindings: Bindings }>, params: ThreadSchema, prompt: PromptSchema): ThreadSchema => {
+  params.prompts = [...params.prompts, ...[prompt]]
+  c.executionCtx.waitUntil(c.env.ChatGPT_Thread.put(params.thread_id, JSON.stringify(params)))
+  return params
+}
 
-threads.patch('/:thread_id/prompts', async (c: Context<{ Bindings: Bindings }>) => {
-  const thread_id: string = c.req.param('thread_id')
-  return c.json(await add(c, thread_id))
-})
-
-threads.delete('/:thread_id', async (c: Context<{ Bindings: Bindings }>) => {
-  const thread_id: string = c.req.param('thread_id')
-  c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.delete(thread_id))
-  return new Response(null, { status: 204 })
-})
-
-/**
- * スレッドの取得
- * @param c
- * @returns
- */
-const get = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema.Data> => {
-  const data: any | null = await c.env.ChatGPT_ChatData.get(thread_id, { type: 'json' })
+const get_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema> => {
+  const data: object | null = await c.env.ChatGPT_Thread.get(thread_id, { type: 'json' })
   if (data === null) {
-    throw new HTTPException(404)
+    throw new HTTPException(404, { message: 'Not Found' })
   }
-  // @ts-ignore
-  return decode(ThreadSchema.Data, data)
+  return ThreadSchema.parse(data)
 }
 
-/**
- * スレッドの作成
- * @param c
- * @returns
- */
-const create = async (c: Context<{ Bindings: Bindings }>): Promise<ThreadSchema.Data> => {
-  const thread: ThreadSchema.Data = ThreadSchema.Data.New(await c.req.json())
-  c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.put(thread.thread_id, JSON.stringify(thread)))
-  return thread
+const get_threads = async (c: Context<{ Bindings: Bindings }>, limit: number): Promise<ThreadSchema[]> => {
+  const keys: string[] = (await c.env.ChatGPT_Thread.list({ limit })).keys.map((key) => key.name)
+  return await Promise.all(keys.map((key) => get_thread(c, key)))
 }
 
-const add = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema.Data> => {
-  // @ts-ignore
-  const params: ThreadSchema.MessageParam = decode(ThreadSchema.MessageParam, await c.req.json())
-  const thread: ThreadSchema.Data = (await get(c, thread_id)).add(params)
-  c.executionCtx.waitUntil(c.env.ChatGPT_ChatData.put(thread.thread_id, JSON.stringify(thread)))
-  return thread
+const delete_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema> => {
+  c.executionCtx.waitUntil(c.env.ChatGPT_Thread.delete(thread_id))
+  return get_thread(c, thread_id)
 }
+
+app.openapi(
+  createRoute({
+    method: HTTPMethod.GET,
+    path: '/',
+    tags: ['スレッド'],
+    summary: 'スレッド一覧',
+    request: {
+      query: z.object({
+        limit: z.number().min(1).max(100).optional().default(10)
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: z.array(ThreadSchema)
+          }
+        },
+        type: 'application/json',
+        description: 'スレッド一覧'
+      }
+    }
+  }),
+  async (c) => {
+    return c.json(await get_threads(c, c.req.valid('query').limit))
+  }
+)
+
+app.openapi(
+  createRoute({
+    method: HTTPMethod.PATCH,
+    path: '/{thread_id}',
+    tags: ['スレッド'],
+    summary: 'スレッド更新',
+    request: {
+      params: z.object({
+        thread_id: z.string()
+      }),
+      body: {
+        content: {
+          'application/json': {
+            schema: PromptSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ThreadSchema
+          }
+        },
+        type: 'application/json',
+        description: 'スレッド詳細'
+      },
+      400: {
+        description: 'Bad Request'
+      }
+    }
+  }),
+  async (c) => {
+    const thread = await get_thread(c, c.req.valid('param').thread_id)
+    const prompt = PromptSchema.parse(c.req.valid('json'))
+    return c.json(update_thread(c, thread, prompt))
+  }
+)
+
+app.openapi(
+  createRoute({
+    method: HTTPMethod.POST,
+    path: '/',
+    tags: ['スレッド'],
+    summary: 'スレッド作成',
+    request: {
+      body: {
+        content: {
+          'application/json': {
+            schema: ThreadSchema
+          }
+        }
+      }
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ThreadSchema
+          }
+        },
+        type: 'application/json',
+        description: 'スレッド詳細'
+      },
+      400: {
+        description: 'Bad Request'
+      }
+    }
+  }),
+  async (c) => {
+    return c.json(create_thread(c, c.req.valid('json')))
+  }
+)
+
+app.openapi(
+  createRoute({
+    method: HTTPMethod.GET,
+    path: '/{thread_id}',
+    tags: ['スレッド'],
+    summary: 'スレッド詳細',
+    request: {
+      params: z.object({
+        thread_id: z.string()
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ThreadSchema
+          }
+        },
+        type: 'application/json',
+        description: 'スレッド詳細'
+      }
+    }
+  }),
+  async (c) => {
+    return c.json(await get_thread(c, c.req.valid('param').thread_id))
+  }
+)
+
+app.openapi(
+  createRoute({
+    method: HTTPMethod.DELETE,
+    path: '/{thread_id}',
+    tags: ['スレッド'],
+    summary: 'スレッド詳細',
+    request: {
+      params: z.object({
+        thread_id: z.string()
+      })
+    },
+    responses: {
+      200: {
+        content: {
+          'application/json': {
+            schema: ThreadSchema
+          }
+        },
+        type: 'application/json',
+        description: 'スレッド詳細'
+      }
+    }
+  }),
+  async (c) => {
+    return c.json(await delete_thread(c, c.req.valid('param').thread_id))
+  }
+)

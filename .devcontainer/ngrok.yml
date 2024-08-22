@@ -1,0 +1,8 @@
+version: 2
+tunnels:
+  nginx:
+    proto: http
+    addr: host.docker.internal:8787
+    host_header: rewrite
+    domain: pleasant-valid-hound.ngrok-free.app
+    # domain: ${NGROK_DOMAIN}
