@@ -1,4 +1,5 @@
 import { HTTPMethod } from '@/enums/method'
+import { Model } from '@/enums/model'
 import { PromptSchema, ThreadSchema } from '@/models/thread.dto'
 import type { Bindings } from '@/utils/bindings'
 import { OpenAPIHono as Hono, createRoute, z } from '@hono/zod-openapi'
@@ -18,6 +19,29 @@ const update_thread = (c: Context<{ Bindings: Bindings }>, params: ThreadSchema,
   return params
 }
 
+const upsert_thread = async (
+  c: Context<{ Bindings: Bindings }>,
+  thread_id: string,
+  discord_user_id: string,
+  prompt: PromptSchema
+): Promise<ThreadSchema> => {
+  try {
+    const thread: ThreadSchema = await get_thread(c, thread_id)
+    return update_thread(c, thread, prompt)
+  } catch (error) {
+    return create_thread(
+      c,
+      ThreadSchema.parse({
+        model: Model.GPT_4O_MINI,
+        thread_id,
+        is_private: false,
+        discord_user_id,
+        prompts: [prompt]
+      })
+    )
+  }
+}
+
 const get_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema> => {
   const data: object | null = await c.env.ChatGPT_Thread.get(thread_id, { type: 'json' })
   if (data === null) {
@@ -28,7 +52,10 @@ const get_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string)
 
 const get_threads = async (c: Context<{ Bindings: Bindings }>, limit: number): Promise<ThreadSchema[]> => {
   const keys: string[] = (await c.env.ChatGPT_Thread.list({ limit })).keys.map((key) => key.name)
-  return await Promise.all(keys.map((key) => get_thread(c, key)))
+  console.log(keys)
+  return (await Promise.allSettled(keys.map((key) => get_thread(c, key))))
+    .filter((result) => result.status === 'fulfilled')
+    .map((result) => (result as PromiseFulfilledResult<ThreadSchema>).value)
 }
 
 const delete_thread = async (c: Context<{ Bindings: Bindings }>, thread_id: string): Promise<ThreadSchema> => {
@@ -77,7 +104,10 @@ app.openapi(
       body: {
         content: {
           'application/json': {
-            schema: PromptSchema
+            schema: z.object({
+              discord_user_id: z.string(),
+              prompt: PromptSchema
+            })
           }
         }
       }
@@ -98,9 +128,10 @@ app.openapi(
     }
   }),
   async (c) => {
-    const thread = await get_thread(c, c.req.valid('param').thread_id)
-    const prompt = PromptSchema.parse(c.req.valid('json'))
-    return c.json(update_thread(c, thread, prompt))
+    const thread_id: string = c.req.valid('param').thread_id
+    const discord_user_id: string = c.req.valid('json').discord_user_id
+    const prompt = PromptSchema.parse(c.req.valid('json').prompt)
+    return c.json(await upsert_thread(c, thread_id, discord_user_id, prompt))
   }
 )
 
